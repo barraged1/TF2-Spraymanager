@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TF2 Spray EasyImport</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><text y='14' font-size='14'>🎨</text></svg>" />
+</head>
+<body>
+    <header class="topbar">
+        <h1><span class="logo">🎨</span> TF2 Spray <span class="accent">EasyImport</span></h1>
+        <nav class="tabs" aria-label="Sections">
+            <a href="#library" class="tab" data-view="library">My Sprays</a>
+            <a href="#create" class="tab" data-view="create">Create Spray</a>
+        </nav>
+        <div id="tf2Status" class="tf2-status" title="Team Fortress 2 install status">
+            <span class="dot"></span><span class="label">Checking TF2…</span>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- ============================== MY SPRAYS ============================== -->
+        <section id="view-library" class="view">
+            <div class="card lib-head">
+                <div class="lib-title">
+                    <h2>My Sprays</h2>
+                    <span id="libStats" class="muted small"></span>
+                </div>
+                <div class="lib-tools">
+                    <input type="search" id="libSearch" placeholder="Search sprays…" aria-label="Search sprays" />
+                    <select id="libSort" aria-label="Sort sprays">
+                        <option value="newest">Newest first</option>
+                        <option value="name">Name (A–Z)</option>
+                        <option value="size">Largest file</option>
+                        <option value="frames">Most frames</option>
+                    </select>
+                    <label class="btn">⬆ Import .vtf<input type="file" id="vtfInput" accept=".vtf" multiple hidden /></label>
+                    <a class="btn primary" href="#create">＋ New spray</a>
+                </div>
+            </div>
+
+            <div class="card rotation-bar hidden" id="rotationBar">
+                <label class="switch" title="Pick a different random spray every game">
+                    <input type="checkbox" id="rotEnabled" aria-label="Random spray each game" />
+                    <span class="slider"></span>
+                </label>
+                <div class="rot-text">
+                    <strong>Random spray each game</strong>
+                    <div class="muted small" id="rotInfo"></div>
+                    <label class="rot-auto small hidden" id="rotStepsWrap" title="Space, the number keys, Q and the mouse wheel work exactly as before; each press also moves the shuffle on one step, so the next spray is hard to predict">
+                        <input type="checkbox" id="rotSteps" />
+                        Also move it on with every jump and weapon switch
+                    </label>
+                    <label class="rot-auto small hidden" id="rotVerboseWrap" title="Prints a line in TF2's console for every step and every spray change; open the console with ~">
+                        <input type="checkbox" id="rotVerbose" />
+                        Log every step in TF2's console
+                    </label>
+                </div>
+                <label class="rot-start hidden" id="rotStartWrap" title="The spray TF2 uses for the first game after every launch; the rotation continues from there">
+                    <span class="muted small">Start every launch with</span>
+                    <select id="rotStart" aria-label="Starting spray"></select>
+                </label>
+                <button class="btn small" id="rotShuffle">🔀 Reshuffle</button>
+            </div>
+
+            <div id="libDrop" class="lib-drop">
+                <div id="libGrid" class="lib-grid"></div>
+                <div id="libEmpty" class="lib-empty hidden"></div>
+                <div class="drop-hint">Drop <code>.vtf</code> files to import them — or an image/video to make a new spray</div>
+            </div>
+        </section>
+
+        <!-- ============================== CREATE ============================== -->
+        <section id="view-create" class="view create hidden">
+            <section class="card" id="importCard">
+                <h2><span class="step">1</span> Choose media</h2>
+                <div id="dropzone" class="dropzone">
+                    <p class="big">Drop an image, GIF, or video here</p>
+                    <p class="muted">or</p>
+                    <label class="btn">
+                        Choose file
+                        <input type="file" id="fileInput" accept="image/*,video/*,.tga" hidden />
+                    </label>
+                    <div class="url-row">
+                        <input type="url" id="urlInput" placeholder="…or paste a link (YouTube, direct .mp4/.gif, etc.)" />
+                        <button class="btn" id="urlBtn">Import URL</button>
+                    </div>
+                    <p class="muted small" id="urlNote"></p>
+                </div>
+                <div id="importProgress" class="progress hidden">
+                    <div class="spinner"></div><span id="importProgressText">Working…</span>
+                </div>
+                <p id="importError" class="error hidden"></p>
+            </section>
+
+            <section class="card hidden" id="editCard">
+                <h2><span class="step">2</span> Crop, trim &amp; loop <span class="muted small" id="srcMeta"></span></h2>
+                <div class="edit-grid" id="editGrid">
+                    <div class="preview-pane">
+                        <div id="staticPreviewWrap" class="media-wrap hidden">
+                            <img id="staticPreview" alt="source preview" />
+                        </div>
+                        <div id="videoWrap" class="media-wrap hidden">
+                            <video id="video" playsinline muted></video>
+                        </div>
+
+                        <div id="cropControls" class="crop-controls">
+                            <label class="check"><input type="checkbox" id="cropEnable" /> ✂ Crop</label>
+                            <label class="check"><input type="checkbox" id="cropLock" /> Lock 1:1</label>
+                            <button class="btn small" id="cropReset">Reset</button>
+                            <span class="muted small" id="cropReadout"></span>
+                        </div>
+
+                        <div id="timeline" class="timeline hidden">
+                            <div class="track" id="track" title="Click or drag to scrub">
+                                <div class="selection" id="selection"></div>
+                                <div class="handle in" id="handleIn" title="Start (drag)"></div>
+                                <div class="handle out" id="handleOut" title="End (drag)"></div>
+                                <div class="playhead" id="playhead"></div>
+                            </div>
+                            <div class="marker-lane" id="markers" aria-label="Detected loops"></div>
+
+                            <div class="transport">
+                                <button class="btn small" id="playBtn">▶ Play selection</button>
+                                <button class="btn small" id="stepBack" title="Previous frame">⟨</button>
+                                <button class="btn small" id="stepFwd" title="Next frame">⟩</button>
+                                <span class="time" id="timeReadout">0.00 / 0.00s</span>
+                            </div>
+
+                            <div class="inout">
+                                <div class="inout-group">
+                                    <span class="lbl in">Start</span>
+                                    <button class="btn small" data-nudge="in" data-dir="-1" title="1 frame earlier">−</button>
+                                    <input type="number" id="inTime" step="0.01" min="0" aria-label="Start time (s)" />
+                                    <button class="btn small" data-nudge="in" data-dir="1" title="1 frame later">+</button>
+                                    <button class="btn small" id="setIn" title="Set start to the playhead">⤓ Here</button>
+                                </div>
+                                <div class="inout-group">
+                                    <span class="lbl out">End</span>
+                                    <button class="btn small" data-nudge="out" data-dir="-1" title="1 frame earlier">−</button>
+                                    <input type="number" id="outTime" step="0.01" min="0" aria-label="End time (s)" />
+                                    <button class="btn small" data-nudge="out" data-dir="1" title="1 frame later">+</button>
+                                    <button class="btn small" id="setOut" title="Set end to the playhead">⤓ Here</button>
+                                </div>
+                                <span class="time" id="selReadout"></span>
+                            </div>
+
+                            <div class="seam">
+                                <div class="seam-frame"><img id="seamEnd" alt="last spray frame" /><span>last frame</span></div>
+                                <span class="seam-arrow">⟶ loops back to ⟶</span>
+                                <div class="seam-frame"><img id="seamStart" alt="first spray frame" /><span>first frame</span></div>
+                                <p class="muted small seam-hint" id="seamHint"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="loops-pane hidden" id="loopsPane">
+                        <div class="loops-head">
+                            <h3>Smooth loop finder</h3>
+                            <button class="btn small" id="findLoopsBtn">↻ Re-scan</button>
+                        </div>
+                        <p class="muted small">Finds the spots where the clip repeats seamlessly. Pick one to trim to it — they're also marked under the timeline.</p>
+                        <div id="loopsProgress" class="progress hidden"><div class="spinner"></div><span>Analyzing…</span></div>
+                        <ul id="loopList" class="loop-list"></ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="card hidden" id="optionsCard">
+                <h2><span class="step">3</span> Spray options</h2>
+                <div class="options-grid">
+                    <label class="field">
+                        <span>Spray name</span>
+                        <input type="text" id="optName" value="spray" />
+                    </label>
+
+                    <label class="field">
+                        <span>Fit to square</span>
+                        <select id="optFit">
+                            <option value="letterbox">Letterbox (show all, pad)</option>
+                            <option value="pad_alpha">Transparent padding (keep aspect)</option>
+                            <option value="crop">Crop (fill, trim edges)</option>
+                            <option value="stretch">Stretch (distort)</option>
+                        </select>
+                    </label>
+
+                    <label class="field">
+                        <span>Format</span>
+                        <select id="optFormat">
+                            <option value="auto">Auto (recommended)</option>
+                            <option value="dxt1">DXT1 (opaque, max res)</option>
+                            <option value="dxt5">DXT5 (transparency)</option>
+                        </select>
+                    </label>
+
+                    <label class="field" id="fpsField">
+                        <span>Frames per second sampled <span class="muted small" title="TF2 always plays sprays at 5 fps. Sampling faster adds frames, so the spray plays slower and gets lower resolution.">(TF2 plays at 5 ⓘ)</span></span>
+                        <input type="number" id="optFps" value="5" min="1" max="30" step="1" />
+                    </label>
+
+                    <label class="field checkbox">
+                        <input type="checkbox" id="optAnimated" checked />
+                        <span>Animated (use the trimmed clip)</span>
+                    </label>
+
+                    <label class="field checkbox" id="boomerangField">
+                        <input type="checkbox" id="optBoomerang" />
+                        <span>Boomerang loop (forward, then backward — always seamless)</span>
+                    </label>
+
+                    <label class="field checkbox">
+                        <input type="checkbox" id="optPoint" />
+                        <span>Crisp pixels (point sampling)</span>
+                    </label>
+
+                    <label class="field checkbox">
+                        <input type="checkbox" id="optMip" />
+                        <span>Generate mipmaps (smoother at distance)</span>
+                    </label>
+
+                    <label class="field">
+                        <span>Max edge (optional)</span>
+                        <input type="number" id="optMaxEdge" placeholder="auto" min="4" max="1020" step="4" />
+                    </label>
+                </div>
+
+                <details class="advanced">
+                    <summary>Background removal (chroma key)</summary>
+                    <div class="options-grid">
+                        <label class="field checkbox">
+                            <input type="checkbox" id="optChroma" />
+                            <span>Remove a background colour → transparency</span>
+                        </label>
+                        <label class="field">
+                            <span>Key colour</span>
+                            <input type="color" id="optChromaColor" value="#00ff00" />
+                        </label>
+                        <label class="field">
+                            <span>Tolerance <span id="tolVal" class="muted small">40</span></span>
+                            <input type="range" id="optChromaTol" min="0" max="255" value="40" />
+                        </label>
+                        <label class="field">
+                            <span>Softness <span id="softVal" class="muted small">20</span></span>
+                            <input type="range" id="optChromaSoft" min="0" max="128" value="20" />
+                        </label>
+                    </div>
+                </details>
+
+                <details class="advanced">
+                    <summary>Fading spray (different image up close vs far)</summary>
+                    <div class="options-grid">
+                        <label class="field checkbox">
+                            <input type="checkbox" id="optFade" />
+                            <span>Enable fading (uses mipmaps)</span>
+                        </label>
+                        <label class="field">
+                            <span>"Far" image</span>
+                            <input type="file" id="fadeInput" accept="image/*" />
+                        </label>
+                        <label class="field">
+                            <span>Fade starts at mip level</span>
+                            <input type="number" id="optFadeLevel" value="2" min="1" max="10" />
+                        </label>
+                    </div>
+                </details>
+
+                <div class="convert-row">
+                    <button class="btn primary big" id="convertBtn">Make spray →</button>
+                    <div id="estimate" class="estimate"></div>
+                    <div id="convertProgress" class="progress hidden"><div class="spinner"></div><span>Encoding…</span></div>
+                    <p id="convertError" class="error hidden"></p>
+                </div>
+            </section>
+
+            <section class="card hidden" id="resultCard">
+                <h2><span class="step">4</span> Preview &amp; save</h2>
+                <div class="result-grid">
+                    <div class="result-preview">
+                        <div class="checker"><img id="resultPreview" alt="spray preview" /></div>
+                        <p class="muted small center">Decoded from the finished .vtf at TF2's 5 fps — exactly what players will see.</p>
+                    </div>
+                    <div class="result-info">
+                        <div class="stat"><span>Size</span><strong id="resSize"></strong></div>
+                        <div class="stat"><span>Resolution</span><strong id="resDims"></strong></div>
+                        <div class="stat"><span>Frames</span><strong id="resFrames"></strong></div>
+                        <div class="stat"><span>Format</span><strong id="resFormat"></strong></div>
+                        <div id="resWarn" class="warn hidden"></div>
+                        <button class="btn primary big" id="saveTf2Btn">💾 Save to My Sprays</button>
+                        <p id="saveResult" class="small"></p>
+                        <div class="downloads">
+                            <a class="btn small" id="dlVtf" download>⬇ .vtf</a>
+                            <a class="btn small" id="dlVmt" download>⬇ .vmt</a>
+                        </div>
+                        <details class="advanced">
+                            <summary>Using sprays in-game</summary>
+                            <ol class="muted small">
+                                <li>Saved sprays appear under <em>Options → Multiplayer</em> in TF2.</li>
+                                <li>Enable sprays in <em>Advanced Options</em> (or <code>cl_spraydisable 0</code>).</li>
+                                <li>Spray with <strong>T</strong> on a community server — Casual hides sprays.</li>
+                            </ol>
+                        </details>
+                    </div>
+                </div>
+                <button class="btn small ghost" id="startOverBtn">↺ Start over</button>
+            </section>
+        </section>
+    </main>
+
+    <dialog id="sprayDialog" class="spray-dialog">
+        <form method="dialog" class="dialog-close"><button class="btn small ghost" aria-label="Close">✕</button></form>
+        <div class="dialog-body">
+            <div class="checker big-preview"><img id="dlgPreview" alt="spray preview" /></div>
+            <div class="dialog-info">
+                <h3 id="dlgName"></h3>
+                <div id="dlgBadges" class="badges"></div>
+                <dl id="dlgDetails" class="details"></dl>
+                <div class="dialog-actions">
+                    <button class="btn small" id="dlgRotation"></button>
+                    <button class="btn small" id="dlgStart"></button>
+                    <a class="btn small" id="dlgDownload" download>⬇ Download .vtf</a>
+                    <button class="btn small danger" id="dlgDelete">🗑 Delete</button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <dialog id="confirmDialog" class="confirm-dialog">
+        <form method="dialog">
+            <p id="confirmText"></p>
+            <div class="confirm-actions">
+                <button class="btn" value="cancel">Cancel</button>
+                <button class="btn primary" id="confirmOk" value="ok">OK</button>
+            </div>
+        </form>
+    </dialog>
+
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+
+    <footer class="footer muted small">
+        Local tool · bound to 127.0.0.1 · Only convert media you have the rights to use.
+    </footer>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

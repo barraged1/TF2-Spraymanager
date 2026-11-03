@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environment
+.venv/
+venv/
+
+# Runtime working data (uploaded media, generated sprays, temp jobs)
+backend/data/
+*.vtf
+*.vmt
+.server_pid
+
+# Generated test media (regenerate with testdata/generate_samples.py)
+testdata/*.png
+testdata/*.mp4
+testdata/*.gif
+
+# OS / editor
+.DS_Store
+Thumbs.db
