@@ -72,7 +72,59 @@ def test_rotation_is_a_closed_cycle_over_all_sprays(tmp_path):
     assert 'bind "w"' not in text
     config = (tf2 / "tf" / "cfg" / "config.cfg").read_text()
     assert config == 'bind "t" "impulse 201"\nbind "w" "+forward"\n'
-    assert text.rstrip().endswith("easyspray_game")
+    steps = re.findall(r'alias easyspray_c\d+ "[^"]*cl_logofile materials/vgui/logos/(\w+\.vtf)"', text)
+    assert sorted(steps) == ["a.vtf", "b.vtf", "c.vtf"]
+    assert 'alias easyspray_game "easyspray_cycle; easyspray_status"' in text
+    assert text.rstrip().endswith("easyspray_c0\neasyspray_status")
+
+
+class FakeConsole:
+    """Just enough of TF2's console to run the generated rotation config."""
+
+    def __init__(self) -> None:
+        self.aliases: dict[str, str] = {}
+        self.logofile = ""
+        self.output: list[str] = []
+
+    def load(self, cfg: str) -> None:
+        for line in cfg.splitlines():
+            defined = re.fullmatch(r'alias (\S+) "(.*)"', line)
+            if defined:
+                self.aliases[defined[1]] = defined[2]
+            elif line and not line.startswith(("//", "bind ")):
+                self.run(line)
+
+    def run(self, commands: str) -> None:
+        for command in filter(None, (part.strip() for part in commands.split(";"))):
+            name, _, rest = command.partition(" ")
+            if name == "alias":
+                alias, _, body = rest.partition(" ")
+                self.aliases[alias] = body
+            elif name == "cl_logofile":
+                self.logofile = rest
+            elif name == "echo":
+                self.output.append(rest)
+            elif name in self.aliases:
+                self.run(self.aliases[name])
+
+
+def test_key_presses_change_the_spray_the_next_server_gets(tmp_path):
+    tf2 = make_tf2(tmp_path)
+    set_start(tf2, "b.vtf")
+    install(tf2, random.Random(1))
+    console = FakeConsole()
+    console.load(rotation_text(tf2))
+    assert console.logofile == "materials/vgui/logos/b.vtf"
+
+    console.run("easyspray_game")  # class pick on the first server
+    after_class_pick = console.logofile
+    assert after_class_pick != "materials/vgui/logos/b.vtf"
+    assert console.output[-1].startswith("[EasyImport] next-map-spray=")
+    console.run("easyspray_cycle")  # a jump or weapon switch later in the match
+    assert console.logofile != after_class_pick
+    console.run("easyspray_cycle")
+    console.run("easyspray_cycle")
+    assert console.logofile == after_class_pick  # 3 sprays: three steps wrap around
 
 
 def test_vanilla_hooks_preserve_user_configs_and_are_idempotent(tmp_path):
@@ -147,7 +199,7 @@ def test_starting_spray_opens_every_launch_and_plays_last_in_the_deck(tmp_path):
         "echo [EasyImport] Starting spray for this launch - b",
     ]
     assert "easyspray_game" not in lines
-    deck = dict(re.findall(r'alias easyspray_s(\d+) "cl_logofile materials/vgui/logos/(\S+?);', "\n".join(lines)))
+    deck = dict(re.findall(r'alias easyspray_c(\d+) "[^"]*cl_logofile materials/vgui/logos/([^";\s]+)', "\n".join(lines)))
     assert deck[str(len(deck) - 1)] == "b.vtf"
 
 
@@ -158,13 +210,13 @@ def test_starting_spray_is_ignored_when_unusable_and_can_be_cleared(tmp_path):
     for bad in ("../escape.vtf", "gone.vtf", "has space.vtf"):
         set_start(tf2, bad)
         assert read_start(tf2) is None
-        assert rotation_text(tf2).rstrip().endswith("easyspray_game")
+        assert rotation_text(tf2).rstrip().endswith("easyspray_status")
 
     set_start(tf2, "a.vtf")
     assert "Starting spray for this launch - a" in rotation_text(tf2)
     set_start(tf2, None)
     assert not (tf2 / "tf" / "cfg" / START_FILE).exists()
-    assert rotation_text(tf2).rstrip().endswith("easyspray_game")
+    assert rotation_text(tf2).rstrip().endswith("easyspray_status")
 
 
 def test_refresh_with_nothing_eligible_writes_a_harmless_rotation(tmp_path):
@@ -278,16 +330,16 @@ def test_newest_steam_cloud_config_wins_and_uninstall_cleans_every_copy(tmp_path
 def test_verbose_logs_every_step_in_the_tf2_console(tmp_path):
     tf2 = make_tf2(tmp_path)
     install(tf2, random.Random(1))
-    assert "step - next up" not in rotation_text(tf2)
+    assert "step=" not in rotation_text(tf2)
 
     set_verbose(tf2, True)
     text = rotation_text(tf2)
-    steps = re.findall(r'alias easyspray_c\d+ "[^"]*echo \[EasyImport\] step - next up \w+ - (\d) of 3"', text)
+    steps = re.findall(r'alias easyspray_c\d+ "[^"]*echo \[EasyImport\] step=(\d)/3 next-map-spray=\w+"', text)
     assert sorted(steps) == ["1", "2", "3"]
     assert "Spray rotation loaded - 3 sprays in a shuffled order - logging every step" in text
 
     set_verbose(tf2, False)
-    assert "step - next up" not in rotation_text(tf2)
+    assert "step=" not in rotation_text(tf2)
 
 
 def test_rotation_changes_are_logged_for_the_app_console(tmp_path, caplog):

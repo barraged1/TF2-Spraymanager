@@ -254,7 +254,7 @@ def build_rotation(
     order = list(sprays)
     rng.shuffle(order)
     if start in order:
-        # The opener just played, so it shouldn't come straight back in the next game.
+        # The opener just played, so it shouldn't come straight back on the next map.
         order.remove(start)
         order.append(start)
     count = len(order)
@@ -263,16 +263,16 @@ def build_rotation(
         "(or re-run install_random_sprays.bat)."
     ]
     for i, spray in enumerate(order):
-        step = f"; {ECHO} step - next up {spray.stem} - {i + 1} of {count}" if verbose else ""
+        # Few, self-describing words: TF2 prints each echo word separately and can jumble them.
+        step = f"; {ECHO} step={i + 1}/{count} next-map-spray={spray.stem}" if verbose else ""
+        # Every step sets the spray right away; TF2 sends it whenever a map loads (a map change
+        # or a new server), so wherever your key presses leave off is what the next map gets.
         lines.append(
             f'alias easyspray_c{i} "alias easyspray_cycle easyspray_c{(i + 1) % count}; '
-            f'alias easyspray_apply easyspray_s{i}{step}"'
+            f'alias easyspray_status easyspray_n{i}; cl_logofile materials/vgui/logos/{spray.name}{step}"'
         )
-        lines.append(
-            f'alias easyspray_s{i} "cl_logofile materials/vgui/logos/{spray.name}; '
-            f'{ECHO} Spray set to {spray.stem} - used from the next server you join"'
-        )
-    lines.append('alias easyspray_game "easyspray_apply; easyspray_cycle"')
+        lines.append(f'alias easyspray_n{i} "{ECHO} next-map-spray={spray.stem} position={i + 1}/{count}"')
+    lines.append('alias easyspray_game "easyspray_cycle; easyspray_status"')
     lines.extend(bind_lines)
     detail = " - logging every step" if verbose else ""
     lines.append(f"{ECHO} Spray rotation loaded - {count} sprays in a shuffled order{detail}")
@@ -280,7 +280,7 @@ def build_rotation(
     if verbose and stepping:
         lines.append(f"{ECHO} Keys that move it on - {', '.join(stepping)}")
     lines.append("easyspray_c0")
-    lines.extend(opening or ["easyspray_game"])
+    lines.extend(opening or ["easyspray_status"])
     return "\n".join(lines) + "\n"
 
 
@@ -389,7 +389,7 @@ def main() -> int:
         print(f"Key(s) {', '.join(result['keys'])} also move the rotation on.")
     else:
         print("No 'impulse 201' spray bind found; the rotation only advances per game.")
-    print("Restart TF2. A new spray is picked when you choose a class and is used next game.")
+    print("Restart TF2. Every class pick and spray press moves to a new spray, used from the next map.")
     return 0
 
 

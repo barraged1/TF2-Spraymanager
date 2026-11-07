@@ -188,8 +188,8 @@ function renderRotation() {
     $("#rotVerbose").checked = Boolean(data.rotation.verbose);
     if (installed) renderStartChoices(start);
     const flow = start
-        ? `Every launch starts with ${stem(start)}; after that, a new one is chosen when you pick a class and shows up from your next game.`
-        : "A new one is chosen when you pick a class and shows up from your next game.";
+        ? `Every launch starts with ${stem(start)}; after that, every class pick (and spray key) moves to a new one, used from the next map.`
+        : "Every class pick (and spray key) moves to a new spray, used from the next map.";
     $("#rotInfo").textContent = installed
         ? `On · ${count} spray${count === 1 ? "" : "s"} in the rotation. ${flow} Use 🎲 on a spray to include or leave it out.`
         : "Off · TF2 keeps using the spray picked in its options.";

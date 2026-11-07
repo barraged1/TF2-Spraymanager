@@ -132,8 +132,11 @@ scripts that the app writes for you (no launcher or `.bat` needed — start TF2
 from Steam as usual):
 
 - `tf/cfg/easyimport_sprays.cfg` holds a freshly shuffled order of your sprays.
-  Picking a class switches `cl_logofile` to the next spray, and each spray key
-  press also advances the order, so the pick is hard to predict.
+  Every step through it (picking a class, pressing the spray key, and
+  optionally jumping or switching weapons) sets `cl_logofile` to the spray it
+  lands on right away. TF2 sends your spray whenever a map loads (a map change
+  or joining a server), so the next map gets wherever all your key presses
+  during the last one left off, which is hard to predict.
 - It's hooked in from `autoexec.cfg` and the class configs — or, if
   [mastercomfig](https://mastercomfig.com) is installed, from its
   `cfg/overrides/autoexec.cfg` and `cfg/overrides/game_overrides.cfg` hooks.
@@ -158,11 +161,11 @@ from Steam as usual):
   work; TF2 just prints "Unknown command" in the console. Movement and
   shooting are left alone.
 - **Log every step in TF2's console** (checkbox) prints a line for every step
-  and every spray change, e.g. `[EasyImport] step - next up P_Foo - 12 of 72`.
+  and every spray change, e.g. `[EasyImport] step=12/72 next-map-spray=P_Foo`.
   Open the console with `~`; it has to be enabled under Options → Advanced.
   Type `con_filter_enable 1; con_filter_text EasyImport` to see only these
   lines. Without this option the console still shows when the rotation loads
-  and whenever a class pick sets your next spray. The app's own window also
+  and, on every class pick, which spray the next map will get. The app's own window also
   logs each time it rewrites the rotation or your key binds.
 - Importing, saving, or deleting sprays keeps the rotation up to date.
 - Turning it off removes the hooks and the rotation file, and strips the
@@ -170,8 +173,8 @@ from Steam as usual):
   TF2 to be closed, because TF2 rewrites `config.cfg` when it quits. All other
   options take effect from your next TF2 launch and can be changed any time.
 
-Notes: TF2 sends your spray to the server when you join, so a newly picked spray
-shows up from your **next server** (a new game), not mid-match. Only sprays with
+Notes: TF2 sends your spray when a map loads, so a new spray shows up from the
+**next map** (a map change on the same server counts), not mid-round. Only sprays with
 simple names (letters, numbers, `_ . -`) that are under 512 KB and not damaged
 can join. `install_random_sprays.bat` / `uninstall_random_sprays.bat` do the same
 as the switch, for use without the web app.
